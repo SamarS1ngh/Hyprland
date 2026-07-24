@@ -108,6 +108,7 @@ namespace Render {
         NColorManagement::PImageDescription workBufferImageDescription();
         bool                                m_bBlockSurfaceFeedback = false;
         bool                                m_bRenderingSnapshot    = false;
+        bool                                m_bExcludeNoScreenShare = false; // see-through capture: skip noscreenshare windows in the capture render pass
         PHLMONITORREF                       m_mostHzMonitor;
         bool                                m_directScanoutBlocked = false;
 

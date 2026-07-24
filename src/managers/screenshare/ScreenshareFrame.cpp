@@ -179,6 +179,36 @@ void CScreenshareFrame::renderMonitor() {
 
     const auto PMONITOR = m_session->monitor();
 
+    // ── See-through capture (PoC) ──────────────────────────────────────────────
+    // If any window on this monitor is flagged noscreenshare, the default path below
+    // copies the composited scanout (which already has that window baked in) and paints
+    // a black box over it. Instead, re-render the monitor's scene with those windows
+    // skipped, so the surfaces behind them show through — no black box.
+    {
+        bool hasHidden = false;
+        for (auto const& w : Desktop::windowState()->windows()) {
+            if (w->m_ruleApplicator && w->m_ruleApplicator->noScreenShare().valueOrDefault() && g_pHyprRenderer->shouldRenderWindow(w, PMONITOR)) {
+                hasHidden = true;
+                break;
+            }
+        }
+
+        if (hasHidden) {
+            g_pHyprRenderer->startRenderPass();
+            g_pHyprRenderer->m_bExcludeNoScreenShare = true;
+            if (PMONITOR->m_activeWorkspace)
+                g_pHyprRenderer->renderWorkspace(PMONITOR, PMONITOR->m_activeWorkspace, Time::steadyNow(), CBox{{}, PMONITOR->m_pixelSize});
+            g_pHyprRenderer->m_bExcludeNoScreenShare = false;
+
+            if (m_overlayCursor) {
+                CRegion  fakeDamage = {0, 0, INT16_MAX, INT16_MAX};
+                Vector2D cursorPos  = g_pInputManager->getMouseCoordsInternal() - PMONITOR->m_position - m_session->m_captureBox.pos() / PMONITOR->m_scale;
+                Pointer::mgr()->renderSoftwareCursorsFor(PMONITOR, Time::steadyNow(), fakeDamage, cursorPos, true);
+            }
+            return;
+        }
+    }
+
     auto       TEXTURE = g_pHyprRenderer->m_renderData.pMonitor->resources()->getMirrorTexture();
     if (!TEXTURE) {
         LOGM(Log::ERR, "Invalid source texture");

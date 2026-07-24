@@ -228,6 +228,11 @@ WP<Render::GL::CHyprOpenGLImpl> IHyprRenderer::glBackend() {
 }
 
 bool IHyprRenderer::shouldRenderWindow(PHLWINDOW pWindow, PHLMONITOR pMonitor) {
+    // see-through capture: when rendering the capture-only pass, omit flagged windows entirely
+    // so the surfaces behind them composite in normally (no black box).
+    if (m_bExcludeNoScreenShare && pWindow->m_ruleApplicator && pWindow->m_ruleApplicator->noScreenShare().valueOrDefault())
+        return false;
+
     if (!pWindow->visibleOnMonitor(pMonitor))
         return false;
 
